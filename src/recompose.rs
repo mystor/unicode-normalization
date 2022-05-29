@@ -10,7 +10,6 @@
 
 use crate::decompose::Decompositions;
 use core::fmt::{self, Write};
-use tinyvec::TinyVec;
 
 #[derive(Clone)]
 enum RecompositionState {
@@ -24,7 +23,10 @@ enum RecompositionState {
 pub struct Recompositions<I> {
     iter: Decompositions<I>,
     state: RecompositionState,
-    buffer: TinyVec<[char; 4]>,
+    #[cfg(feature = "tinyvec")]
+    buffer: tinyvec::TinyVec<[char; 4]>,
+    #[cfg(not(feature = "tinyvec"))]
+    buffer: alloc::vec::Vec<char>,
     composee: Option<char>,
     last_ccc: Option<u8>,
 }
@@ -34,7 +36,7 @@ pub fn new_canonical<I: Iterator<Item = char>>(iter: I) -> Recompositions<I> {
     Recompositions {
         iter: super::decompose::new_canonical(iter),
         state: self::RecompositionState::Composing,
-        buffer: TinyVec::new(),
+        buffer: Default::default(),
         composee: None,
         last_ccc: None,
     }
@@ -45,7 +47,7 @@ pub fn new_compatible<I: Iterator<Item = char>>(iter: I) -> Recompositions<I> {
     Recompositions {
         iter: super::decompose::new_compatible(iter),
         state: self::RecompositionState::Composing,
-        buffer: TinyVec::new(),
+        buffer: Default::default(),
         composee: None,
         last_ccc: None,
     }
@@ -145,7 +147,7 @@ impl<I: Iterator<Item = char>> Iterator for Recompositions<I> {
 }
 
 impl<I: Iterator<Item = char> + Clone> fmt::Display for Recompositions<I> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for c in self.clone() {
             f.write_char(c)?;
         }

@@ -44,14 +44,6 @@
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-
-#[cfg(feature = "std")]
-extern crate core;
-
-extern crate tinyvec;
-
 pub use crate::decompose::Decompositions;
 pub use crate::quick_check::{
     is_nfc, is_nfc_quick, is_nfc_stream_safe, is_nfc_stream_safe_quick, is_nfd, is_nfd_quick,

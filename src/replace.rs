@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 use core::fmt::{self, Write};
-use tinyvec::ArrayVec;
 
 /// External iterator for replacements for a string's characters.
 #[derive(Clone)]
@@ -36,10 +35,17 @@ impl<I: Iterator<Item = char>> Iterator for Replacements<I> {
         match self.iter.next() {
             Some(ch) => {
                 // At this time, the longest replacement sequence has length 2.
-                let mut buffer = ArrayVec::<[char; 2]>::new();
-                super::char::decompose_cjk_compat_variants(ch, |d| buffer.push(d));
-                self.buffer = buffer.get(1).copied();
-                Some(buffer[0])
+                let mut next = None;
+                super::char::decompose_cjk_compat_variants(ch, |d| {
+                    if next.is_none() {
+                        next = Some(d);
+                    } else {
+                        assert!(self.buffer.is_none(), "decomposed into more than 2 characters");
+                        self.buffer = Some(d);
+                    }
+                });
+                assert!(next.is_some(), "decomposed into 0 characters");
+                next
             }
             None => None,
         }
@@ -52,7 +58,7 @@ impl<I: Iterator<Item = char>> Iterator for Replacements<I> {
 }
 
 impl<I: Iterator<Item = char> + Clone> fmt::Display for Replacements<I> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for c in self.clone() {
             f.write_char(c)?;
         }

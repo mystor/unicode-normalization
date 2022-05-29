@@ -10,7 +10,6 @@
 use core::fmt::{self, Write};
 use core::iter::Fuse;
 use core::ops::Range;
-use tinyvec::TinyVec;
 
 #[derive(Clone)]
 enum DecompositionType {
@@ -32,7 +31,10 @@ pub struct Decompositions<I> {
     // 2) "Ready" characters which are sorted and ready to emit on demand;
     // 3) A "pending" block which stills needs more characters for us to be able
     //    to sort in canonical order and is not safe to emit.
-    buffer: TinyVec<[(u8, char); 4]>,
+    #[cfg(feature = "tinyvec")]
+    buffer: tinyvec::TinyVec<[(u8, char); 4]>,
+    #[cfg(not(feature = "tinyvec"))]
+    buffer: alloc::vec::Vec<(u8, char)>,
     ready: Range<usize>,
 }
 
@@ -41,7 +43,7 @@ pub fn new_canonical<I: Iterator<Item = char>>(iter: I) -> Decompositions<I> {
     Decompositions {
         kind: self::DecompositionType::Canonical,
         iter: iter.fuse(),
-        buffer: TinyVec::new(),
+        buffer: Default::default(),
         ready: 0..0,
     }
 }
@@ -51,7 +53,7 @@ pub fn new_compatible<I: Iterator<Item = char>>(iter: I) -> Decompositions<I> {
     Decompositions {
         kind: self::DecompositionType::Compatible,
         iter: iter.fuse(),
-        buffer: TinyVec::new(),
+        buffer: Default::default(),
         ready: 0..0,
     }
 }
@@ -152,7 +154,7 @@ impl<I: Iterator<Item = char>> Iterator for Decompositions<I> {
 }
 
 impl<I: Iterator<Item = char> + Clone> fmt::Display for Decompositions<I> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for c in self.clone() {
             f.write_char(c)?;
         }
